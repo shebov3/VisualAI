@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Visual Assistant</title>
+    <meta name="description" content="AI-powered real-time visual assistant using camera and audio hosted on GitHub Pages">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: rgba(20, 20, 32, 0.8);
+            --bg-glass: rgba(255, 255, 255, 0.03);
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --text-primary: #e8e8f0;
+            --text-secondary: #8888a0;
+            --text-dim: #555570;
+            --accent-primary: #6c5ce7;
+            --accent-secondary: #a29bfe;
+            --accent-glow: rgba(108, 92, 231, 0.3);
+            --danger: #ff6b6b;
+            --danger-glow: rgba(255, 107, 107, 0.3);
+            --success: #51cf66;
+            --success-glow: rgba(81, 207, 102, 0.3);
+            --warning: #ffd43b;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Ambient background effects */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 20%, rgba(108, 92, 231, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(162, 155, 254, 0.05) 0%, transparent 50%),
+                        radial-gradient(circle at 50% 50%, rgba(108, 92, 231, 0.03) 0%, transparent 70%);
+            animation: ambientShift 20s ease-in-out infinite;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        @keyframes ambientShift {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(-2%, 1%) rotate(1deg); }
+            66% { transform: translate(1%, -1%) rotate(-0.5deg); }
+        }
+
+        /* Header */
+        header {
+            position: relative;
+            z-index: 10;
+            padding: 20px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-glass);
+            backdrop-filter: blur(20px);
+            background: rgba(10, 10, 15, 0.6);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+
+        .logo h1 {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        .logo span {
+            color: var(--accent-secondary);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        #status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+
+        #status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-dim);
+            transition: all 0.3s ease;
+        }
+
+        #status-badge.connected #status-dot {
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success-glow);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        #status-badge.connected {
+            border-color: rgba(81, 207, 102, 0.2);
+            color: var(--success);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.2); }
+        }
+
+        /* Main layout */
+        main {
+            position: relative;
+            z-index: 10;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 24px;
+            padding: 24px 32px;
+            max-width: 1400px;
+            margin: 0 auto;
+            height: calc(100vh - 81px);
+        }
+
+        /* Camera panel */
+        .camera-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .video-container {
+            position: relative;
+            flex: 1;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            border: 1px solid var(--border-glass);
+            min-height: 400px;
+        }
+
+        #camera-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transform: scaleX(-1);
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            border-radius: var(--radius-xl);
+            box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.3);
+        }
+
+        .video-overlay::before {
+            content: '';
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--danger);
+            box-shadow: 0 0 10px var(--danger-glow);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .video-container.recording .video-overlay::before {
+            opacity: 1;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .video-placeholder {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--text-dim);
+        }
+
+        .video-placeholder svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .video-placeholder p {
+            font-size: 14px;
+        }
+
+        /* Controls */
+        .controls-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-lg);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-primary), #7c6cf0);
+            color: white;
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 6px 25px var(--accent-glow);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0) scale(0.97);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger), #ff8787);
+            color: white;
+            box-shadow: 0 4px 15px var(--danger-glow);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 6px 25px var(--danger-glow);
+            transform: translateY(-1px);
+        }
+
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            color: var(--text-secondary);
+            border-radius: var(--radius-md);
+        }
+
+        .btn-icon:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+        }
+
+        .btn-icon.active {
+            background: rgba(108, 92, 231, 0.15);
+            border-color: rgba(108, 92, 231, 0.3);
+            color: var(--accent-secondary);
+        }
+
+        .controls-divider {
+            width: 1px;
+            height: 24px;
+            background: var(--border-glass);
+        }
+
+        /* Audio level indicator */
+        .audio-level {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: auto;
+        }
+
+        .audio-level-label {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .audio-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 20px;
+        }
+
+        .audio-bar {
+            width: 3px;
+            background: var(--accent-primary);
+            border-radius: 2px;
+            transition: height 0.1s ease;
+            min-height: 3px;
+        }
+
+        /* Side panel */
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .panel-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-lg);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-glass);
+        }
+
+        .panel-title {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+        }
+
+        /* Transcript */
+        .transcript-card {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #transcript {
+            flex: 1;
+            padding: 16px 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: calc(100vh - 340px);
+        }
+
+        #transcript::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #transcript::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #transcript::-webkit-scrollbar-thumb {
+            background: var(--border-glass);
+            border-radius: 4px;
+        }
+
+        .transcript-entry {
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            line-height: 1.6;
+            animation: fadeSlideIn 0.3s ease;
+        }
+
+        .transcript-entry.ai {
+            background: rgba(108, 92, 231, 0.08);
+            border-left: 3px solid var(--accent-primary);
+            color: var(--text-primary);
+        }
+
+        .transcript-entry.system {
+            background: rgba(255, 255, 255, 0.02);
+            color: var(--text-dim);
+            font-size: 12px;
+            text-align: center;
+            border-left: none;
+        }
+
+        .transcript-entry .entry-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+            color: var(--accent-secondary);
+        }
+
+        .transcript-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            color: var(--text-dim);
+            text-align: center;
+            gap: 8px;
+        }
+
+        .transcript-empty svg {
+            width: 32px;
+            height: 32px;
+            opacity: 0.3;
+            margin-bottom: 8px;
+        }
+
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Text input */
+        .text-input-area {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border-glass);
+            display: flex;
+            gap: 8px;
+        }
+
+        .text-input-area input {
+            flex: 1;
+            padding: 10px 14px;
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .text-input-area input:focus {
+            border-color: var(--accent-primary);
+        }
+
+        /* Info card */
+        .info-card {
+            padding: 20px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .info-item {
+            padding: 12px;
+            background: var(--bg-glass);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-glass);
+        }
+
+        .info-item-label {
+            font-size: 11px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+
+        .info-item-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        /* Settings Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-container {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-xl);
+            width: 100%;
+            max-width: 500px;
+            padding: 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.open .modal-container {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            margin-bottom: 24px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .modal-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: monospace;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent-primary);
+        }
+
+        #capture-canvas {
+            display: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            main {
+                grid-template-columns: 1fr;
+                padding: 16px;
+                height: auto;
+            }
+            .video-container { min-height: 300px; }
+            .side-panel { max-height: 50vh; }
+            header { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <div class="logo-icon">👁️</div>
+            <h1>Visual <span>Assistant</span></h1>
+        </div>
+        <div class="header-actions">
+            <div id="status-badge">
+                <div id="status-dot"></div>
+                <span id="status-text">Disconnected</span>
+            </div>
+            <button class="btn btn-icon" onclick="openSettings()" title="Settings">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <div class="camera-panel">
+            <div class="video-container" id="video-container">
+                <video id="camera-feed" autoplay playsinline muted></video>
+                <div class="video-overlay"></div>
+                <div class="video-placeholder" id="video-placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M15.6 11.6L12 7.4L8.4 11.6M12 16V7.4"/>
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M17 21v-2a4 4 0 00-4-4H11a4 4 0 00-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <p>Camera will appear here</p>
+                </div>
+                <canvas id="capture-canvas"></canvas>
+            </div>
+
+            <div class="controls-bar">
+                <button class="btn btn-primary" id="btn-start" onclick="startSession()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+                    Start
+                </button>
+                <button class="btn btn-danger" id="btn-stop" onclick="stopSession()" style="display:none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                    Stop
+                </button>
+
+                <div class="controls-divider"></div>
+
+                <button class="btn btn-icon" id="btn-mic" onclick="toggleMic()" title="Toggle Microphone">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+                        <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="23"/>
+                        <line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                </button>
+
+                <button class="btn btn-icon" id="btn-camera-toggle" onclick="toggleCamera()" title="Toggle Camera">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 7l-7 5 7 5V7z"/>
+                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                    </svg>
+                </button>
+
+                <div class="audio-level">
+                    <span class="audio-level-label">MIC</span>
+                    <div class="audio-bars" id="audio-bars">
+                        <div class="audio-bar" style="height: 3px;"></div>
+                        <div class="audio-bar" style="height: 3px;"></div>
+                        <div class="audio-bar" style="height: 3px;"></div>
+                        <div class="audio-bar" style="height: 3px;"></div>
+                        <div class="audio-bar" style="height: 3px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="side-panel">
+            <div class="panel-card info-card">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-item-label">Model</div>
+                        <div class="info-item-value" style="font-size:12px;">Gemini 3.1 Flash</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-label">Connection</div>
+                        <div class="info-item-value" id="conn-type">WebSockets</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-label">Frame Rate</div>
+                        <div class="info-item-value">1 FPS</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-label">Format</div>
+                        <div class="info-item-value">16kHz Int16</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-card transcript-card">
+                <div class="panel-header">
+                    <span class="panel-title">AI Responses</span>
+                    <button class="btn btn-icon" onclick="clearTranscript()" title="Clear" style="width:30px;height:30px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3,6 5,6 21,6"/>
+                            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                        </svg>
+                    </button>
+                </div>
+                <div id="transcript">
+                    <div class="transcript-empty">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                        </svg>
+                        <p>AI responses will appear here</p>
+                        <p style="font-size: 12px;">Click Start to begin the session</p>
+                    </div>
+                </div>
+                <div class="text-input-area">
+                    <input type="text" id="text-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendText()">
+                    <button class="btn btn-icon" onclick="sendText()" style="width:38px; height:38px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"/>
+                            <polygon points="22,2 15,22 11,13 2,9"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <div class="modal-title">API Configuration</div>
+                <div class="modal-desc">Configure your Gemini API key. It is saved in your local browser storage and never sent anywhere else.</div>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="api-key-input">Gemini API Key</label>
+                <input class="form-input" type="password" id="api-key-input" placeholder="Enter API Key...">
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:28px;">
+                <button class="btn btn-icon" onclick="closeSettings()" style="width:auto; padding:0 20px;">Cancel</button>
+                <button class="btn btn-primary" onclick="saveSettings()">Save & Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ─── State ──────────────────────────────────────────────────────────
+        let ws = null;
+        let mediaStream = null;
+        let audioContext = null;
+        let frameInterval = null;
+        let isRunning = false;
+        let micEnabled = true;
+        let cameraEnabled = true;
+
+        // Audio playback
+        let playbackContext = null;
+        let nextPlayTime = 0;
+        let activeSources = [];
+
+        // Audio specs
+        const SAMPLE_RATE_IN = 16000;
+        const SAMPLE_RATE_OUT = 24000;
+        const FRAME_INTERVAL_MS = 1000;
+
+        const SYSTEM_PROMPT = `You are a real-time visual assistant for the user. Your job is to look at the camera feed and clearly describe everything you see to support them in their daily life.
+
+Follow these rules when describing the video or image:
+
+1. Be Clear and Direct: Describe the scene in simple, plain English. Start with the most important things in the center of the frame or closest to the user.
+2. Space and Location: Tell the user where objects are located in relation to them (e.g., "There is a coffee cup about six inches to your right," or "A doorway is straight ahead").
+3. Read Text Aloud: If you see signs, labels, computer screens, or documents, read the text clearly. State what the object is before reading the text (e.g., "The label on the medicine bottle says...").
+4. Identify Hazards: Immediately warn the user about potential dangers, such as obstacles on the floor, spills, stairs, or oncoming traffic.
+5. Keep it Concise: Give enough detail to be helpful, but do not overwhelm the user with too much talking. Focus on what matters most for safety and understanding.
+6. Tone: Speak in a calm, helpful, and friendly voice.`;
+
+        // ─── Load/Save API Key ──────────────────────────────────────────────
+        
+        function getApiKey() {
+            return localStorage.getItem("gemini_api_key") || "";
+        }
+
+        document.getElementById("api-key-input").value = getApiKey();
+
+        function openSettings() {
+            document.getElementById("settings-modal").classList.add("open");
+        }
+
+        function closeSettings() {
+            document.getElementById("settings-modal").classList.remove("open");
+        }
+
+        function saveSettings() {
+            const key = document.getElementById("api-key-input").value.trim();
+            if (key) {
+                localStorage.setItem("gemini_api_key", key);
+            } else {
+                localStorage.removeItem("gemini_api_key");
+            }
+            closeSettings();
+            if (isRunning) {
+                appendTranscript("API Key updated. Please restart the session to apply changes.", "system");
+            }
+        }
+
+        // ─── WebSocket Connection ───────────────────────────────────────────
+
+        function connectWebSocket() {
+            const key = getApiKey();
+            if (!key) {
+                updateStatus("API key missing. Click Settings.", false);
+                openSettings();
+                return false;
+            }
+
+            updateStatus("Connecting to Gemini...", false);
+            const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`;
+            
+            try {
+                ws = new WebSocket(url);
+            } catch(e) {
+                updateStatus("Connection failed to initialize", false);
+                return false;
+            }
+
+            ws.onopen = () => {
+                console.log("WebSocket connected.");
+                updateStatus("Connected to Gemini", true);
+
+                // Send setup configuration
+                const setupMessage = {
+                    setup: {
+                        model: "models/gemini-3.1-flash-live-preview",
+                        generationConfig: {
+                            responseModalities: ["AUDIO"],
+                            speechConfig: {
+                                voiceConfig: {
+                                    prebuiltVoiceConfig: {
+                                        voiceName: "Zephyr"
+                                    }
+                                }
+                            },
+                            systemInstruction: {
+                                parts: [
+                                    { text: SYSTEM_PROMPT }
+                                ]
+                            }
+                        }
+                    }
+                };
+                ws.send(JSON.stringify(setupMessage));
+                startFrameCapture();
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const response = JSON.parse(event.data);
+                    
+                    if (response.serverContent) {
+                        const content = response.serverContent;
+                        
+                        // Handle interruption barge-in
+                        if (content.interrupted) {
+                            stopAudioPlayback();
+                            appendTranscript("[Interrupted]", "system");
+                        }
+
+                        if (content.modelTurn && content.modelTurn.parts) {
+                            for (const part of content.modelTurn.parts) {
+                                if (part.text) {
+                                    appendTranscript(part.text, 'ai');
+                                }
+                                if (part.inlineData && part.inlineData.data) {
+                                    playReceivedAudio(part.inlineData.data);
+                                }
+                            }
+                        }
+                    }
+                } catch(e) {
+                    console.error("Error parsing message", e);
+                }
+            };
+
+            ws.onclose = (event) => {
+                console.log("WebSocket closed.", event);
+                updateStatus("Disconnected", false);
+                if (isRunning) {
+                    stopSession();
+                    appendTranscript("Session closed by server.", "system");
+                }
+            };
+
+            ws.onerror = (err) => {
+                console.error("WebSocket error:", err);
+                updateStatus("Connection error", false);
+            };
+
+            return true;
+        }
+
+        // ─── Camera & Microphone Capture ────────────────────────────────────
+
+        async function startMedia() {
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+                    audio: { sampleRate: SAMPLE_RATE_IN, channelCount: 1, echoCancellation: true, noiseSuppression: true }
+                });
+
+                const video = document.getElementById('camera-feed');
+                video.srcObject = mediaStream;
+                document.getElementById('video-placeholder').style.display = 'none';
+
+                // Set up audio processing (16kHz 16-bit PCM little-endian downsampler)
+                audioContext = new AudioContext({ sampleRate: mediaStream.getAudioTracks()[0].getSettings().sampleRate });
+                const source = audioContext.createMediaStreamSource(mediaStream);
+                
+                // Create a script processor to record audio chunks
+                const processor = audioContext.createScriptProcessor(4096, 1, 1);
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+
+                processor.onaudioprocess = (e) => {
+                    if (!isRunning || !micEnabled || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+                    const inputData = e.inputBuffer.getChannelData(0);
+                    // Resample to 16kHz
+                    const resampled = resample(inputData, e.inputBuffer.sampleRate, SAMPLE_RATE_IN);
+                    
+                    // Convert to Float32 to Int16 PCM
+                    const pcm16 = new Int16Array(resampled.length);
+                    for (let i = 0; i < resampled.length; i++) {
+                        const s = Math.max(-1, Math.min(1, resampled[i]));
+                        pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                    }
+
+                    const b64 = arrayBufferToBase64(pcm16.buffer);
+                    
+                    ws.send(JSON.stringify({
+                        realtimeInput: {
+                            audio: {
+                                mimeType: `audio/pcm;rate=${SAMPLE_RATE_IN}`,
+                                data: b64
+                            }
+                        }
+                    }));
+
+                    updateAudioLevel(inputData);
+                };
+
+                // Initialize Audio Context for 24kHz outputs
+                playbackContext = new AudioContext({ sampleRate: SAMPLE_RATE_OUT });
+
+                return true;
+            } catch (err) {
+                console.error('Media access error:', err);
+                updateStatus('Camera/mic access denied', false);
+                return false;
+            }
+        }
+
+        function stopMedia() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(t => t.stop());
+                mediaStream = null;
+            }
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            if (playbackContext) {
+                playbackContext.close();
+                playbackContext = null;
+            }
+            const video = document.getElementById('camera-feed');
+            video.srcObject = null;
+            document.getElementById('video-placeholder').style.display = 'flex';
+        }
+
+        function startFrameCapture() {
+            const video = document.getElementById('camera-feed');
+            const canvas = document.getElementById('capture-canvas');
+            const ctx = canvas.getContext('2d');
+
+            frameInterval = setInterval(() => {
+                if (!isRunning || !cameraEnabled || video.readyState < 2 || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+                canvas.width = 480;
+                canvas.height = 360;
+                ctx.save();
+                ctx.scale(-1, 1);
+                ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+                ctx.restore();
+
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                const b64 = dataUrl.split(',')[1];
+
+                ws.send(JSON.stringify({
+                    realtimeInput: {
+                        video: {
+                            mimeType: "image/jpeg",
+                            data: b64
+                        }
+                    }
+                }));
+            }, FRAME_INTERVAL_MS);
+        }
+
+        function stopFrameCapture() {
+            if (frameInterval) {
+                clearInterval(frameInterval);
+                frameInterval = null;
+            }
+        }
+
+        // ─── Audio Downsampling ──────────────────────────────────────────────
+
+        function resample(inputBuffer, inputSampleRate, outputSampleRate) {
+            if (inputSampleRate === outputSampleRate) return inputBuffer;
+            const ratio = inputSampleRate / outputSampleRate;
+            const newLength = Math.round(inputBuffer.length / ratio);
+            const result = new Float32Array(newLength);
+            let offsetResult = 0;
+            let offsetInput = 0;
+            while (offsetResult < result.length) {
+                const nextOffset = Math.round((offsetResult + 1) * ratio);
+                let accum = 0, count = 0;
+                for (let i = offsetInput; i < nextOffset && i < inputBuffer.length; i++) {
+                    accum += inputBuffer[i];
+                    count++;
+                }
+                result[offsetResult] = count > 0 ? accum / count : 0;
+                offsetResult++;
+                offsetInput = nextOffset;
+            }
+            return result;
+        }
+
+        // ─── Audio Playback (Contiguous scheduling) ──────────────────────────
+
+        function playReceivedAudio(b64Audio) {
+            const bytes = base64ToArrayBuffer(b64Audio);
+            const int16 = new Int16Array(bytes);
+
+            const float32 = new Float32Array(int16.length);
+            for (let i = 0; i < int16.length; i++) {
+                float32[i] = int16[i] / 32768.0;
+            }
+
+            if (!playbackContext) {
+                playbackContext = new AudioContext({ sampleRate: SAMPLE_RATE_OUT });
+            }
+
+            const buffer = playbackContext.createBuffer(1, float32.length, SAMPLE_RATE_OUT);
+            buffer.getChannelData(0).set(float32);
+
+            const source = playbackContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(playbackContext.destination);
+
+            const currentTime = playbackContext.currentTime;
+            if (nextPlayTime < currentTime) {
+                nextPlayTime = currentTime;
+            }
+            source.start(nextPlayTime);
+            nextPlayTime += buffer.duration;
+
+            activeSources.push(source);
+            source.onended = () => {
+                const index = activeSources.indexOf(source);
+                if (index > -1) activeSources.splice(index, 1);
+            };
+        }
+
+        function stopAudioPlayback() {
+            activeSources.forEach(s => {
+                try { s.stop(); } catch(e) {}
+            });
+            activeSources = [];
+            nextPlayTime = 0;
+        }
+
+        // ─── Session Control ────────────────────────────────────────────────
+
+        async function startSession() {
+            if (isRunning) return;
+
+            isRunning = true;
+            document.getElementById('btn-start').style.display = 'none';
+            document.getElementById('btn-stop').style.display = 'flex';
+            document.getElementById('btn-mic').classList.add('active');
+            document.getElementById('btn-camera-toggle').classList.add('active');
+            document.getElementById('video-container').classList.add('recording');
+
+            // 1. connect websocket
+            const wsConnected = connectWebSocket();
+            if (!wsConnected) {
+                stopSession();
+                return;
+            }
+
+            // 2. get media devices access
+            const mediaSuccess = await startMedia();
+            if (!mediaSuccess) {
+                stopSession();
+                return;
+            }
+
+            appendTranscript('Session started — streaming visual and audio cues to Gemini.', 'system');
+        }
+
+        function stopSession() {
+            isRunning = false;
+            stopFrameCapture();
+            stopMedia();
+            stopAudioPlayback();
+
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+
+            document.getElementById('btn-start').style.display = 'flex';
+            document.getElementById('btn-stop').style.display = 'none';
+            document.getElementById('btn-mic').classList.remove('active');
+            document.getElementById('btn-camera-toggle').classList.remove('active');
+            document.getElementById('video-container').classList.remove('recording');
+
+            appendTranscript('Session ended', 'system');
+            document.querySelectorAll('.audio-bar').forEach(b => b.style.height = '3px');
+        }
+
+        function toggleMic() {
+            micEnabled = !micEnabled;
+            document.getElementById('btn-mic').classList.toggle('active', micEnabled);
+            if (mediaStream) {
+                mediaStream.getAudioTracks().forEach(t => t.enabled = micEnabled);
+            }
+            if (!micEnabled) {
+                document.querySelectorAll('.audio-bar').forEach(b => b.style.height = '3px');
+            }
+        }
+
+        function toggleCamera() {
+            cameraEnabled = !cameraEnabled;
+            document.getElementById('btn-camera-toggle').classList.toggle('active', cameraEnabled);
+            if (mediaStream) {
+                mediaStream.getVideoTracks().forEach(t => t.enabled = cameraEnabled);
+            }
+        }
+
+        // ─── UI Updates ─────────────────────────────────────────────────────
+
+        function updateStatus(message, connected) {
+            const badge = document.getElementById('status-badge');
+            const text = document.getElementById('status-text');
+            text.textContent = message;
+            badge.classList.toggle('connected', connected);
+        }
+
+        function appendTranscript(text, type) {
+            const container = document.getElementById('transcript');
+            const empty = container.querySelector('.transcript-empty');
+            if (empty) empty.remove();
+
+            if (type === 'ai') {
+                let lastEntry = container.querySelector('.transcript-entry.ai:last-of-type');
+                const isRecent = lastEntry && (Date.now() - parseInt(lastEntry.dataset.time || 0)) < 3000;
+
+                if (isRecent && lastEntry) {
+                    const content = lastEntry.querySelector('.entry-content');
+                    content.textContent += text;
+                    lastEntry.dataset.time = Date.now();
+                } else {
+                    const entry = document.createElement('div');
+                    entry.className = 'transcript-entry ai';
+                    entry.dataset.time = Date.now();
+                    entry.innerHTML = `<div class="entry-label">Assistant</div><div class="entry-content">${escapeHtml(text)}</div>`;
+                    container.appendChild(entry);
+                }
+            } else {
+                const entry = document.createElement('div');
+                entry.className = `transcript-entry ${type}`;
+                entry.textContent = text;
+                container.appendChild(entry);
+            }
+
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function clearTranscript() {
+            const container = document.getElementById('transcript');
+            container.innerHTML = `
+                <div class="transcript-empty">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                    </svg>
+                    <p>AI responses will appear here</p>
+                    <p style="font-size: 12px;">Transcript cleared</p>
+                </div>
+            `;
+        }
+
+        function updateAudioLevel(data) {
+            const bars = document.querySelectorAll('.audio-bar');
+            const rms = Math.sqrt(data.reduce((s, v) => s + v * v, 0) / data.length);
+            const level = Math.min(1, rms * 5);
+
+            bars.forEach((bar, i) => {
+                const h = 3 + level * (15 + Math.random() * 5) * (1 - Math.abs(i - 2) * 0.2);
+                bar.style.height = `${Math.max(3, h)}px`;
+            });
+        }
+
+        function sendText() {
+            const input = document.getElementById('text-input');
+            const text = input.value.trim();
+            if (!text || !isRunning || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+            ws.send(JSON.stringify({
+                realtimeInput: {
+                    text: text
+                }
+            }));
+            appendTranscript(`You: ${text}`, 'system');
+            input.value = '';
+        }
+
+        // ─── Helpers ────────────────────────────────────────────────────────
+
+        function arrayBufferToBase64(buffer) {
+            const bytes = new Uint8Array(buffer);
+            let binary = '';
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
+        }
+
+        function base64ToArrayBuffer(b64) {
+            const binary = atob(b64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
